@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LED Strip Simulator (WebAssembly)</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            font-family: 'Courier New', monospace;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            font-size: 24px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .subtitle {
+            margin-bottom: 30px;
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        #controls {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #2a2a2a;
+            border-radius: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+        }
+
+        select, button {
+            padding: 8px 16px;
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        select:hover, button:hover {
+            background: #444;
+        }
+
+        button.active {
+            background: #4CAF50;
+            border-color: #4CAF50;
+        }
+
+        button.stopped {
+            background: #f44336;
+            border-color: #f44336;
+        }
+
+        input[type="range"] {
+            width: 150px;
+            cursor: pointer;
+        }
+
+        .fps-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .fps-value {
+            min-width: 45px;
+            text-align: center;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        #strip-container {
+            display: flex;
+            gap: 4px;
+            padding: 20px;
+            background: #2a2a2a;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .led {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            transition: background-color 50ms ease-in-out, box-shadow 50ms ease-in-out;
+            box-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+        }
+
+        #status {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #333;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+
+        .ready {
+            color: #4CAF50;
+        }
+
+        .error {
+            color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <h1>LED Strip Simulator</h1>
+    <div class="subtitle">WebAssembly Edition</div>
+
+    <div id="controls">
+        <div class="control-group">
+            <label for="effect-select">Effect</label>
+            <select id="effect-select">
+                <option value="Rainbow">Rainbow</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="start-stop">Animation</label>
+            <button id="start-stop" class="active">Stop</button>
+        </div>
+
+        <div class="control-group">
+            <label>FPS</label>
+            <div class="fps-display">
+                <input type="range" id="fps-slider" min="1" max="60" value="30">
+                <span class="fps-value"><span id="fps-value">30</span> FPS</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="strip-container"></div>
+    <div id="status">Status: <span id="status-text" class="ready">Loading...</span></div>
+
+    <script type="module">
+        import init, { LedSimulator, listEffects } from './pkg/smart_led_simulator_wasm.js';
+
+        const LED_COUNT = 60;
+        let simulator;
+        let leds = [];
+        let isRunning = true;
+        let fps = 30;
+        let animationId = null;
+        let lastFrameTime = 0;
+
+        const stripContainer = document.getElementById('strip-container');
+        const statusText = document.getElementById('status-text');
+        const effectSelect = document.getElementById('effect-select');
+        const startStopBtn = document.getElementById('start-stop');
+        const fpsSlider = document.getElementById('fps-slider');
+        const fpsValue = document.getElementById('fps-value');
+
+        function createStrip() {
+            stripContainer.innerHTML = '';
+            leds = [];
+            for (let i = 0; i < LED_COUNT; i++) {
+                const led = document.createElement('div');
+                led.className = 'led';
+                led.style.backgroundColor = 'rgb(0, 0, 0)';
+                stripContainer.appendChild(led);
+                leds.push(led);
+            }
+        }
+
+        function updateLeds(frameData) {
+            for (let i = 0; i < LED_COUNT; i++) {
+                const r = frameData[i * 3];
+                const g = frameData[i * 3 + 1];
+                const b = frameData[i * 3 + 2];
+
+                leds[i].style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+
+                const brightness = (r + g + b) / 3;
+                const glowIntensity = brightness / 255 * 10;
+                leds[i].style.boxShadow = `0 0 ${glowIntensity}px rgba(${r}, ${g}, ${b}, 0.8)`;
+            }
+        }
+
+        function animate(timestamp) {
+            if (!isRunning) {
+                animationId = null;
+                return;
+            }
+
+            const frameInterval = 1000 / fps;
+            const elapsed = timestamp - lastFrameTime;
+
+            if (elapsed >= frameInterval) {
+                const frameData = simulator.nextFrame();
+                updateLeds(frameData);
+                lastFrameTime = timestamp - (elapsed % frameInterval);
+            }
+
+            animationId = requestAnimationFrame(animate);
+        }
+
+        function startAnimation() {
+            if (!animationId && isRunning) {
+                lastFrameTime = performance.now();
+                animationId = requestAnimationFrame(animate);
+            }
+        }
+
+        function stopAnimation() {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+        }
+
+        effectSelect.addEventListener('change', (e) => {
+            try {
+                simulator.setEffect(e.target.value);
+            } catch (err) {
+                console.error('Failed to set effect:', err);
+            }
+        });
+
+        startStopBtn.addEventListener('click', () => {
+            isRunning = !isRunning;
+            startStopBtn.textContent = isRunning ? 'Stop' : 'Start';
+            startStopBtn.className = isRunning ? 'active' : 'stopped';
+
+            if (isRunning) {
+                startAnimation();
+            } else {
+                stopAnimation();
+            }
+        });
+
+        fpsSlider.addEventListener('input', (e) => {
+            fps = parseInt(e.target.value);
+            fpsValue.textContent = fps;
+        });
+
+        async function main() {
+            try {
+                await init();
+
+                const effects = listEffects();
+                effectSelect.innerHTML = effects.map(effect =>
+                    `<option value="${effect}">${effect}</option>`
+                ).join('');
+
+                simulator = new LedSimulator(LED_COUNT, 'Rainbow');
+
+                createStrip();
+                startAnimation();
+
+                statusText.textContent = 'Ready';
+                statusText.className = 'ready';
+            } catch (err) {
+                console.error('Failed to initialize:', err);
+                statusText.textContent = 'Error: ' + err.message;
+                statusText.className = 'error';
+            }
+        }
+
+        main();
+    </script>
+</body>
+</html>
