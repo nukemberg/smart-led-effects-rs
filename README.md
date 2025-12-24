@@ -20,15 +20,20 @@ Currently only works for strips/loops. But someday the plan is to extend it.
 
     - Breathe
     - Bounce
+    - Brightness (filter - wraps effect)
     - Collision
+    - Concat (runs effects in order)
     - Cylon
+    - EnergyBar
     - Fire
+    - Gamma (filter - wraps effect)
     - Meteor
     - Morse
     - ProgressBar
     - Rainbow
     - RunningLights
     - SnowSparkle
+    - Static
     - Strobe
     - Timer
     - Twinkle

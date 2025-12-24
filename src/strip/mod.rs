@@ -2,16 +2,24 @@ mod breathe;
 pub use breathe::Breathe;
 mod bounce;
 pub use bounce::Bounce;
+mod brightness;
+pub use brightness::Brightness;
 mod christmas;
 pub use christmas::Christmas;
 mod collision;
 pub use collision::Collision;
+mod concat;
+pub use concat::Concat;
 mod cycle;
 pub use cycle::Cycle;
 mod cylon;
 pub use cylon::Cylon;
+mod energy_bar;
+pub use energy_bar::EnergyBar;
 mod fire;
 pub use fire::Fire;
+mod gamma;
+pub use gamma::Gamma;
 mod meteor;
 pub use meteor::Meteor;
 mod morse;
@@ -22,6 +30,8 @@ mod rainbow;
 pub use rainbow::Rainbow;
 mod running_lights;
 pub use running_lights::RunningLights;
+mod static_effect;
+pub use static_effect::Static;
 mod strobe;
 pub use strobe::Strobe;
 mod timer;
@@ -42,6 +52,7 @@ const LIST: &[&str] = &[
     "Collision",
     "Cycle",
     "Cylon",
+    "EnergyBar",
     "Fire",
     "Meteor",
     "Morse",
@@ -49,6 +60,7 @@ const LIST: &[&str] = &[
     "Rainbow",
     "RunningLights",
     "SnowSparkle",
+    "Static",
     "Strobe",
     "Timer",
     "Twinkle",
@@ -71,12 +83,15 @@ pub fn get_default_effect(count: usize, name: &str) -> Option<Box<dyn EffectIter
             None,
             None,
         ))),
+        "EnergyBar" => Some(Box::new(EnergyBar::new(count, None, None, None, None))),
         "Fire" => Some(Box::new(Fire::new(count, None, None))),
         "Meteor" => Some(Box::new(Meteor::new(count, None, None, None))),
         "Morse" => Some(Box::new(Morse::new(count, "Hello, world!", None, false))),
         "ProgressBar" => Some(Box::new(ProgressBar::new(count, None, None, None))),
         "Rainbow" => Some(Box::new(Rainbow::new(count, None))),
         "RunningLights" => Some(Box::new(RunningLights::new(count, None, false))),
+        "SnowSparkle" => Some(Box::new(SnowSparkle::new(count, None, None, None, None))),
+        "Static" => Some(Box::new(Static::new(vec![palette::Srgb::<u8>::new(255, 255, 255); count]))),
         "Strobe" => Some(Box::new(Strobe::new(
             count,
             None,
@@ -85,7 +100,6 @@ pub fn get_default_effect(count: usize, name: &str) -> Option<Box<dyn EffectIter
         ))),
         // "Timer" => Some(Box::new(Timer::new(count, None, None))),
         "Twinkle" => Some(Box::new(Twinkle::new(count, None, None, None, None))),
-        "SnowSparkle" => Some(Box::new(SnowSparkle::new(count, None, None, None, None))),
         "Wipe" => Some(Box::new(Wipe::colour_wipe(count, None, false))),
         _ => None,
     }
