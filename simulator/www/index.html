@@ -165,7 +165,9 @@
     <div id="status">Status: <span id="status-text" class="ready">Loading...</span></div>
 
     <script type="module">
-        import init, { LedSimulator, listEffects } from './pkg/smart_led_simulator_wasm.js';
+        // Use dynamic import to bust cache during development
+        const wasmModule = await import(`./pkg/smart_led_simulator_wasm.js?v=${Date.now()}`);
+        const { default: init, LedSimulator, listEffects } = wasmModule;
 
         const LED_COUNT = 60;
         let simulator;
@@ -274,7 +276,9 @@
                     `<option value="${effect}">${effect}</option>`
                 ).join('');
 
-                simulator = new LedSimulator(LED_COUNT, 'Rainbow');
+                // Initialize simulator with the first effect in the list (which is now selected in the dropdown)
+                const initialEffect = effects[0] || 'Rainbow';
+                simulator = new LedSimulator(LED_COUNT, initialEffect);
 
                 createStrip();
                 startAnimation();
