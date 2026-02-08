@@ -98,7 +98,7 @@ pub fn get_default_effect(count: usize, name: &str) -> Option<Box<dyn EffectIter
             std::time::Duration::from_secs(1),
             None,
         ))),
-        // "Timer" => Some(Box::new(Timer::new(count, None, None))),
+        "Timer" => Some(Box::new(Timer::new(count, std::time::Duration::from_secs(10), None, None, None, false))),
         "Twinkle" => Some(Box::new(Twinkle::new(count, None, None, None, None))),
         "Wipe" => Some(Box::new(Wipe::colour_wipe(count, None, false))),
         _ => None,
